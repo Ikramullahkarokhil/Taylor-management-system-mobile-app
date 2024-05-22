@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, View, StyleSheet, Text } from "react-native";
 import { Button, Title, Divider, Checkbox } from "react-native-paper";
-import ConfirmationDialog from "../ConfirmationDialog/ConfirmationDialog";
 import UpdateCustomerModel from "../UpdateCustomerModel/UpdateCustomerModel";
 import {
   differenceInDays,
@@ -11,7 +10,6 @@ import {
 } from "date-fns";
 
 const CustomerDetailsModal = ({ visible, customer, onClose }) => {
-  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
   const [jeebTunban, setJeebTunban] = useState(false);
   const [timeSinceRegistration, setTimeSinceRegistration] = useState("");
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
@@ -149,6 +147,7 @@ const CustomerDetailsModal = ({ visible, customer, onClose }) => {
                   label="تاریخ ثبت نام"
                   value={timeSinceRegistration}
                 />
+                <Divider />
               </View>
               <View style={styles.confirmButtonContainer}>
                 <Button
@@ -201,13 +200,14 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
-    maxWidth: "90%", // Set a maximum width
-    width: "90%", // Set a fixed width if needed
+    maxWidth: "95%",
+    width: "95%",
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     marginBottom: 10,
     textAlign: "center",
+    fontWeight: "bold",
   },
 
   detailsContainer: {
@@ -220,16 +220,18 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   label: {
-    fontWeight: "bold",
-    width: "40%", // Adjust the width of the label to occupy 40% of the row
+    fontWeight: "600",
+    width: "40%",
+    fontSize: 15,
   },
   valueContainer: {
     flex: 1,
     marginLeft: 10,
-    alignItems: "flex-start", // Align the value to the start of the container
+    alignItems: "flex-start",
   },
   value: {
-    color: "red",
+    fontSize: 15,
+    fontWeight: "bold",
   },
   confirmButtonContainer: {
     flexDirection: "row",

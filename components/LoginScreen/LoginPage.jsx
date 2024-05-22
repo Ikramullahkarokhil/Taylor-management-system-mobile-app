@@ -7,17 +7,20 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Formik } from "formik";
+import { StatusBar } from "expo-status-bar";
 import * as yup from "yup";
 import { executeSql } from "../../Database";
 import { TextInput } from "react-native-paper";
+import * as NavigationBar from "expo-navigation-bar";
 
 const LoginSchema = yup.object().shape({
   password: yup.string().required("Password is required"),
 });
 
-const LoginPage = ({ onLogin, isLoggedIn }) => {
+const LoginPage = ({ onLogin }) => {
   const [isPasswordIncorrect, setIsPasswordIncorrect] = useState(false);
   const [loading, setLoading] = useState(false);
+  NavigationBar.setBackgroundColorAsync("#F2F5F3");
 
   const handleLogin = async (values) => {
     try {
@@ -48,6 +51,7 @@ const LoginPage = ({ onLogin, isLoggedIn }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="dark" backgroundColor="#F2F5F3" />
       <View style={styles.formContainer}>
         <Text style={styles.title}>Adil Fashion</Text>
         <Formik
@@ -115,7 +119,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#F2F5F3",
     width: "100%",
   },
   formContainer: {

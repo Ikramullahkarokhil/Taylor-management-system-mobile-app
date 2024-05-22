@@ -192,7 +192,7 @@ const UpdateWaskatModel = ({ visible, onClose, customerData }) => {
           {({ handleChange, handleBlur, handleSubmit, values, errors }) => (
             <View style={styles.form}>
               <View style={styles.titleContainer}>
-                <Text style={styles.title}>Update Customer</Text>
+                <Text style={styles.title}>Update Customer Waskat</Text>
               </View>
               <View style={styles.fieldContainer}>
                 <DynamicInputField

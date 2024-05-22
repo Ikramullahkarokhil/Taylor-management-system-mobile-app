@@ -18,27 +18,26 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
-  NavigationBar.setBackgroundColorAsync("white");
+  NavigationBar.setBackgroundColorAsync("#F2F5F3");
 
   const [routes] = useState([
     {
       key: "home",
       title: "Home",
-      icon: "home", // Change "focusedIcon" to "icon"
-      inactiveIcon: "home-outline", // Change "unfocusedIcon" to "inactiveIcon"
+      icon: "home",
+      inactiveIcon: "home-outline",
     },
     {
       key: "addCustomer",
       title: "Add Customer",
-      icon: "person-add", // Change "focusedIcon" to "icon"
-      inactiveIcon: "person-add-outline", // Change "unfocusedIcon" to "inactiveIcon"
+      icon: "person-add",
+      inactiveIcon: "person-add-outline",
     },
     {
       key: "settings",
       title: "Settings",
-      icon: "settings", // Change "focusedIcon" to "icon"
+      icon: "settings",
       inactiveIcon: "settings-outline",
-      // No need for "unfocusedIcon" for Settings as it doesn't have an alternative
     },
   ]);
 
@@ -117,9 +116,12 @@ export default function App() {
           navigationState={{ index, routes }}
           onIndexChange={setIndex}
           renderScene={renderScene}
-          renderIcon={renderIcon} // Pass the custom renderIcon function
-          barStyle={{ backgroundColor: "white" }}
+          renderIcon={renderIcon}
+          barStyle={{ backgroundColor: "#F2F5F3" }}
           sceneAnimationEnabled={true}
+          activeColor="black"
+          inactiveColor="#626262"
+          activeIndicatorStyle={{ backgroundColor: "#DCDCDC" }}
         />
       </View>
     </SafeAreaProvider>

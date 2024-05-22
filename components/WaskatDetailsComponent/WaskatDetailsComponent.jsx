@@ -1,7 +1,6 @@
 import { Modal, View, StyleSheet, Text } from "react-native";
 import React, { useState, useEffect } from "react";
 import { Button, Title, Divider } from "react-native-paper";
-import ConfirmationDialog from "../ConfirmationDialog/ConfirmationDialog";
 import {
   differenceInDays,
   differenceInMonths,
@@ -11,7 +10,6 @@ import {
 import UpdateWaskatModel from "../UpdateWaskatModel/UpdateWaskatModel";
 
 const WaskatDetailsComponent = ({ visible, customer, onClose }) => {
-  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
   const [timeSinceRegistration, setTimeSinceRegistration] = useState("");
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
 
@@ -170,13 +168,14 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
-    maxWidth: "90%", // Set a maximum width
-    width: "90%", // Set a fixed width if needed
+    maxWidth: "95%", // Set a maximum width
+    width: "95%", // Set a fixed width if needed
   },
   modalTitle: {
     fontSize: 20,
     marginBottom: 10,
     textAlign: "center",
+    fontWeight: "bold",
   },
 
   detailsContainer: {
@@ -189,8 +188,9 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   label: {
-    fontWeight: "bold",
-    width: "40%", // Adjust the width of the label to occupy 40% of the row
+    fontWeight: "600",
+    width: "40%",
+    fontSize: 15,
   },
   valueContainer: {
     flex: 1,
@@ -198,7 +198,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-start", // Align the value to the start of the container
   },
   value: {
-    color: "red",
+    fontSize: 15,
+    fontWeight: "bold",
   },
   confirmButtonContainer: {
     flexDirection: "row",
