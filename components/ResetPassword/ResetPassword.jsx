@@ -5,6 +5,35 @@ import { Formik } from "formik";
 import db from "../../Database";
 import * as Yup from "yup";
 
+const DynamicInputField = ({
+  label,
+  name,
+  handleChange,
+  handleBlur,
+  value,
+  errors,
+  keyboard,
+}) => {
+  const handleInputChange = (inputValue) => {
+    handleChange(name)(inputValue);
+  };
+
+  return (
+    <View style={styles.fieldContainer}>
+      <TextInput
+        label={label}
+        onChangeText={handleInputChange}
+        onBlur={handleBlur(name)}
+        value={value}
+        style={styles.input}
+        error={errors[name] ? true : false}
+        keyboardType={keyboard}
+        multiline={true}
+      />
+    </View>
+  );
+};
+
 const ResetPassword = ({ isVisible, onClose }) => {
   const validationSchema = Yup.object().shape({
     currentPassword: Yup.string().required("Current password is required"),
@@ -73,65 +102,54 @@ const ResetPassword = ({ isVisible, onClose }) => {
             {({
               handleChange,
               handleSubmit,
+              handleBlur,
               values,
               errors,
               touched,
-              setFieldTouched,
             }) => (
-              <View>
-                <TextInput
-                  style={[
-                    styles.input,
-                    touched.currentPassword && errors.currentPassword
-                      ? { borderColor: "red" }
-                      : null,
-                  ]}
-                  placeholder="Current Password"
+              <View style={styles.formContainer}>
+                <DynamicInputField
+                  label="Current Password"
+                  name="currentPassword"
+                  handleChange={handleChange}
+                  handleBlur={handleBlur}
                   value={values.currentPassword}
-                  onChangeText={handleChange("currentPassword")}
-                  onBlur={() => setFieldTouched("currentPassword")}
-                  secureTextEntry
+                  errors={errors}
                 />
                 {touched.currentPassword && errors.currentPassword && (
                   <Text style={styles.errorText}>{errors.currentPassword}</Text>
                 )}
-                <TextInput
-                  style={[
-                    styles.input,
-                    touched.newPassword && errors.newPassword
-                      ? { borderColor: "red" }
-                      : null,
-                  ]}
-                  placeholder="New Password"
+                <DynamicInputField
+                  label="New Password"
+                  name="newPassword"
+                  handleChange={handleChange}
+                  handleBlur={handleBlur}
                   value={values.newPassword}
-                  onChangeText={handleChange("newPassword")}
-                  onBlur={() => setFieldTouched("newPassword")}
-                  secureTextEntry
+                  errors={errors}
                 />
                 {touched.newPassword && errors.newPassword && (
                   <Text style={styles.errorText}>{errors.newPassword}</Text>
                 )}
-                <TextInput
-                  style={[
-                    styles.input,
-                    touched.confirmPassword && errors.confirmPassword
-                      ? { borderColor: "red" }
-                      : null,
-                  ]}
-                  placeholder="Confirm New Password"
+                <DynamicInputField
+                  label="Confirm Password"
+                  name="confirmPassword"
+                  handleChange={handleChange}
+                  handleBlur={handleBlur}
                   value={values.confirmPassword}
-                  onChangeText={handleChange("confirmPassword")}
-                  onBlur={() => setFieldTouched("confirmPassword")}
-                  secureTextEntry
+                  errors={errors}
                 />
                 {touched.confirmPassword && errors.confirmPassword && (
                   <Text style={styles.errorText}>{errors.confirmPassword}</Text>
                 )}
                 <View style={styles.buttonContainer}>
-                  <Button mode="contained" onPress={handleSubmit}>
+                  <Button
+                    mode="elevated"
+                    buttonColor="white"
+                    onPress={handleSubmit}
+                  >
                     Change Password
                   </Button>
-                  <Button mode="outlined" onPress={onClose}>
+                  <Button mode="elevated" onPress={onClose}>
                     Cancel
                   </Button>
                 </View>
@@ -152,12 +170,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: "#F2F5F3",
     borderRadius: 10,
     padding: 20,
     alignItems: "center",
-    width: "90%",
+    width: "95%",
+    maxWidth: "95%",
     elevation: 10,
+  },
+  formContainer: {
+    width: "90%",
+    maxWidth: "90%",
   },
   modalText: {
     fontSize: 20,
@@ -166,13 +189,12 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 50,
-    // borderColor: "#ccc",
-    // borderWidth: 1,
     borderRadius: 5,
     paddingHorizontal: 10,
     marginBottom: 10,
     fontSize: 16,
     backgroundColor: "white",
+    borderColor: "black",
   },
   errorText: {
     color: "red",

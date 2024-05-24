@@ -207,7 +207,12 @@ export default function Restore() {
 
   return (
     <View>
-      <Button icon="file-restore" mode="outlined" onPress={pickFile}>
+      <Button
+        icon="file-restore"
+        mode="elevated"
+        buttonColor="white"
+        onPress={pickFile}
+      >
         Restore Data
       </Button>
       {loading && <ActivityIndicator color="blue" size={40} />}

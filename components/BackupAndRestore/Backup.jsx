@@ -81,7 +81,12 @@ const Backup = () => {
 
   return (
     <View style={styles.container}>
-      <Button icon="backup-restore" mode="contained" onPress={handleBackup}>
+      <Button
+        icon="backup-restore"
+        mode="elevated"
+        buttonColor="white"
+        onPress={handleBackup}
+      >
         Backup Customer Data
       </Button>
       {loading && (

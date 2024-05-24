@@ -18,7 +18,11 @@ const Settings = ({ onLogout }) => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Button mode="outlined" onPress={toggleResetPasswordModal}>
+        <Button
+          mode="elevated"
+          buttonColor="white"
+          onPress={toggleResetPasswordModal}
+        >
           Change Password
         </Button>
         <ResetPassword
@@ -31,7 +35,8 @@ const Settings = ({ onLogout }) => {
       <View style={styles.logout}>
         <Button
           icon="logout"
-          mode="outlined"
+          mode="elevated"
+          buttonColor="white"
           style={styles.button}
           onPress={handleLogout}
         >
