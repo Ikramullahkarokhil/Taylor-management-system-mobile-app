@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   ToastAndroid,
   Text,
   TouchableOpacity,
+  Animated,
 } from "react-native";
 import {
   Searchbar,
@@ -15,85 +16,39 @@ import {
   Paragraph,
   IconButton,
 } from "react-native-paper";
-
-import db from "../../Database";
 import CustomerDetailsModal from "../CustomerDetailsModal/CustomerDetailsModal";
 import ConfirmationDialog from "../ConfirmationDialog/ConfirmationDialog";
 import SelectDropdown from "react-native-select-dropdown";
 import WaskatDetailsComponent from "../WaskatDetailsComponent/WaskatDetailsComponent";
+import useStore from "../../store";
+import db from "../../Database";
 
 const Home = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [data, setData] = useState([]);
+  const {
+    searchQuery,
+    data,
+    selectedOption,
+    totalRecords,
+    loadedRecords,
+    setSearchQuery,
+    setSelectedOption,
+    setLoadedRecords,
+    fetchData,
+    fetchTotalRecords,
+  } = useStore();
+
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
-  const [totalRecords, setTotalRecords] = useState(0);
-  const [loadedRecords, setLoadedRecords] = useState(10);
-  const [selectedOption, setSelectedOption] = useState("customer"); // Default selected option
   const flatListRef = useRef(null);
+  const [lastScrollOffset, setLastScrollOffset] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetchData();
-    fetchTotalRecords();
-  }, [searchQuery, selectedOption]); // Trigger fetch data when search query, updateData, or selectedOption changes
-
-  const fetchData = useCallback(() => {
-    if (selectedOption === "customer") {
-      fetchCustomerData();
-    } else if (selectedOption === "waskat") {
-      fetchWaskatData();
-    }
-  }, [selectedOption, searchQuery, loadedRecords]);
-
-  const fetchCustomerData = useCallback(() => {
-    let query =
-      "SELECT * FROM customer WHERE name LIKE ? OR phoneNumber LIKE ?";
-    const queryParams = [`%${searchQuery}%`, `%${searchQuery}%`];
-
-    db.transaction((tx) => {
-      tx.executeSql(
-        query,
-        queryParams,
-        (_, { rows: { _array } }) => {
-          setData(_array);
-        },
-        (error) => {
-          console.log("Error:", error);
-        }
-      );
-    });
-  }, [searchQuery, loadedRecords]);
-
-  const fetchWaskatData = useCallback(() => {
-    let query = "SELECT * FROM waskat WHERE name LIKE ? OR phoneNumber LIKE ?";
-    const queryParams = [`%${searchQuery}%`, `%${searchQuery}%`];
-
-    db.transaction((tx) => {
-      tx.executeSql(
-        query,
-        queryParams,
-        (_, { rows: { _array } }) => {
-          setData(_array);
-        },
-        (error) => {
-          console.log("Error:", error);
-        }
-      );
-    });
-  }, [searchQuery, loadedRecords]);
-
-  const optionMapping = {
-    کالا: "customer",
-    واسکت: "waskat",
-  };
-
-  const handleOptionChange = (option) => {
-    const englishTableName = optionMapping[option];
-    setSelectedOption(englishTableName);
-    fetchTotalRecords();
-  };
+    fetchData(selectedOption, searchQuery, loadedRecords);
+    fetchTotalRecords(selectedOption);
+  }, [searchQuery, selectedOption]);
 
   const goToTop = () => {
     flatListRef.current.scrollToOffset({ animated: true, offset: 0 });
@@ -102,10 +57,10 @@ const Home = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData();
-    fetchTotalRecords();
+    fetchData(selectedOption, searchQuery, loadedRecords);
+    fetchTotalRecords(selectedOption);
     setRefreshing(false);
-  }, [fetchData]);
+  }, [selectedOption, searchQuery, loadedRecords]);
 
   const handleDetails = (item) => {
     setSelectedCustomer(item);
@@ -133,8 +88,8 @@ const Home = () => {
           );
           setModalVisible(false);
           setConfirmationVisible(false);
-          fetchTotalRecords();
-          fetchData();
+          fetchTotalRecords(selectedOption);
+          fetchData(selectedOption, searchQuery, loadedRecords);
         },
         (error) => {
           console.log("Error deleting customer:", error);
@@ -143,24 +98,49 @@ const Home = () => {
     });
   };
 
-  const fetchTotalRecords = useCallback(() => {
-    const query = `SELECT COUNT(id) AS total FROM ${selectedOption}`;
+  const optionMapping = {
+    کالا: "customer",
+    واسکت: "waskat",
+  };
 
-    db.transaction((tx) => {
-      tx.executeSql(
-        query,
-        [],
-        (_, { rows }) => {
-          const { total } = rows.item(0);
-          setTotalRecords(total);
-        },
-        (error) => {
-          console.log("Error counting total records:", error);
-        }
-      );
-    });
-  }, [selectedOption]);
+  const handleOptionChange = (option) => {
+    const englishTableName = optionMapping[option];
+    setSelectedOption(englishTableName);
+    fetchTotalRecords(englishTableName);
+  };
 
+  const handleScroll = (event) => {
+    const currentScrollOffset = event.nativeEvent.contentOffset.y;
+
+    if (currentScrollOffset > lastScrollOffset && currentScrollOffset > 500) {
+      hideGoToTopButton();
+    } else if (
+      currentScrollOffset < lastScrollOffset &&
+      currentScrollOffset > 500
+    ) {
+      showGoToTopButton();
+    } else if (currentScrollOffset <= 500) {
+      hideGoToTopButton();
+    }
+
+    setLastScrollOffset(currentScrollOffset);
+  };
+
+  const showGoToTopButton = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const hideGoToTopButton = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
   const ListItem = React.memo(({ item, onPressDetails, onPressDelete }) => {
     return (
       <Card
@@ -255,11 +235,13 @@ const Home = () => {
         }
         ListHeaderComponent={renderListHeader}
         initialNumToRender={5}
+        onScroll={handleScroll} // Track scroll position
       />
-
-      <TouchableOpacity style={styles.goToTopButton} onPress={goToTop}>
-        <IconButton icon="arrow-up" color="#0083D0" />
-      </TouchableOpacity>
+      <Animated.View style={[styles.goToTopButton, { opacity: fadeAnim }]}>
+        <TouchableOpacity onPress={goToTop}>
+          <IconButton icon="arrow-up" color="#0083D0" />
+        </TouchableOpacity>
+      </Animated.View>
 
       {modalVisible && selectedOption === "customer" && (
         <CustomerDetailsModal
@@ -359,11 +341,6 @@ const styles = StyleSheet.create({
     right: 20,
     backgroundColor: "#0083D0",
     borderRadius: 20,
-  },
-  goToBottomButton: {
-    borderRadius: 20,
-    flexDirection: "row",
-    alignItems: "center",
   },
 });
 
