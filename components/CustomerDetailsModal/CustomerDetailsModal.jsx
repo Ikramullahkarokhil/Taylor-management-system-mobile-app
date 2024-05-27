@@ -11,13 +11,18 @@ import {
 
 const CustomerDetailsModal = ({ visible, customer, onClose }) => {
   const [jeebTunban, setJeebTunban] = useState(false);
+  const [yakhanBinValue, setYakhanBinValue] = useState("");
   const [timeSinceRegistration, setTimeSinceRegistration] = useState("");
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
 
   useEffect(() => {
-    // Update jeebTunban state and calculate time since registration
     if (customer) {
       setJeebTunban(customer.jeebTunban === 1);
+      if (customer.yakhanBin === 1) {
+        setYakhanBinValue("بن دار ,");
+      } else {
+        setYakhanBinValue("");
+      }
       const currentDate = new Date();
       const diffInDays = differenceInDays(
         currentDate,
@@ -114,7 +119,7 @@ const CustomerDetailsModal = ({ visible, customer, onClose }) => {
 
                 <DetailRow
                   label="یخن"
-                  value={`${customer.yakhan} (${customer.yakhanValue})`}
+                  value={`${yakhanBinValue} ${customer.yakhan} (${customer.yakhanValue})`}
                 />
 
                 <Divider />

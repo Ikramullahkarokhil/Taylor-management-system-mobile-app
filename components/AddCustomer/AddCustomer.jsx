@@ -91,6 +91,7 @@ const DynamicInputField = ({
 const AddCustomer = () => {
   const [resetFields, setResetFields] = useState(false);
   const [jeebTunbanChecked, setJeebTunbanChecked] = useState(false);
+  const [yakhanBinChecked, setYakhanBinChecked] = useState(false);
   const getCurrentDate = () => {
     const currentDate = new Date();
     const year = currentDate.getFullYear();
@@ -138,7 +139,7 @@ const AddCustomer = () => {
     db.transaction(
       (tx) => {
         tx.executeSql(
-          "INSERT INTO customer (name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO customer (name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue,yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?,?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             values.name,
             values.phoneNumber,
@@ -151,6 +152,7 @@ const AddCustomer = () => {
             values.pacha,
             values.yakhan,
             values.yakhanValue,
+            yakhanBinChecked ? 1 : 0,
             values.farmaish,
             values.daman,
             values.caff,
@@ -166,6 +168,7 @@ const AddCustomer = () => {
               resetForm();
               setResetFields(!resetFields);
               setJeebTunbanChecked(false);
+              setYakhanBinChecked(false);
             } else {
               console.log("Error saving customer.");
             }
@@ -196,6 +199,7 @@ const AddCustomer = () => {
           pacha: "",
           yakhan: "",
           yakhanValue: "",
+          yakhanBin: "",
           farmaish: "",
           daman: "",
           caff: "",
@@ -297,15 +301,14 @@ const AddCustomer = () => {
               </View>
 
               <View style={styles.fieldContainer}>
-                <DynamicSelectField
-                  label="دامن"
-                  name="daman"
-                  handleChange={handleChange}
-                  handleBlur={handleBlur}
-                  value={values.daman}
-                  items={selectDaman}
-                  errors={errors}
-                  resetField={resetFields}
+                <Checkbox.Item
+                  label="بن دار"
+                  status={yakhanBinChecked ? "checked" : "unchecked"}
+                  onPress={() => setYakhanBinChecked(!yakhanBinChecked)}
+                  labelStyle={styles.checkboxLabel}
+                  color="#0083D0"
+                  uncheckedColor="#0083D0"
+                  style={styles.checkbox}
                 />
               </View>
             </View>
@@ -376,12 +379,12 @@ const AddCustomer = () => {
 
               <View style={styles.fieldContainer}>
                 <DynamicSelectField
-                  label="جیب"
-                  name="jeeb"
+                  label="دامن"
+                  name="daman"
                   handleChange={handleChange}
                   handleBlur={handleBlur}
-                  value={values.jeeb}
-                  items={selectJeeb}
+                  value={values.daman}
+                  items={selectDaman}
                   errors={errors}
                   resetField={resetFields}
                 />
@@ -415,13 +418,15 @@ const AddCustomer = () => {
 
             <View style={styles.fieldContainer2}>
               <View style={styles.fieldContainer}>
-                <DynamicInputField
-                  label="فرمایشات"
-                  name="farmaish"
+                <DynamicSelectField
+                  label="جیب"
+                  name="jeeb"
                   handleChange={handleChange}
                   handleBlur={handleBlur}
-                  value={values.farmaish}
+                  value={values.jeeb}
+                  items={selectJeeb}
                   errors={errors}
+                  resetField={resetFields}
                 />
               </View>
               <View style={styles.fieldContainer}>
@@ -436,9 +441,27 @@ const AddCustomer = () => {
                 />
               </View>
             </View>
-            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-              <Text style={styles.buttonText}>اضافه کردن مشتری</Text>
-            </TouchableOpacity>
+
+            <View style={[styles.fieldContainer2, { marginTop: 10 }]}>
+              <View style={styles.fieldContainer}>
+                <DynamicInputField
+                  label="فرمایشات"
+                  name="farmaish"
+                  handleChange={handleChange}
+                  handleBlur={handleBlur}
+                  value={values.farmaish}
+                  errors={errors}
+                />
+              </View>
+            </View>
+
+            <View style={styles.fieldContainer2}>
+              <View style={styles.fieldContainer}>
+                <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                  <Text style={styles.buttonText}>اضافه کردن مشتری</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         )}
       </Formik>
@@ -511,7 +534,7 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 16,
-    color: "#333", // Change label color
+    color: "#333",
   },
   checkbox: {
     backgroundColor: "white",
@@ -525,10 +548,8 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: "#0083D0",
     borderRadius: 5,
-    paddingVertical: 15,
-    paddingHorizontal: 50,
+    paddingVertical: 17,
     alignItems: "center",
-    marginTop: 10,
   },
   buttonText: {
     color: "white",

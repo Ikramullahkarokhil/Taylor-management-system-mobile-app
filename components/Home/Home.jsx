@@ -2,12 +2,10 @@ import React, { useEffect, useCallback, useState, useRef } from "react";
 import {
   StyleSheet,
   View,
-  FlatList,
   RefreshControl,
   ToastAndroid,
   Text,
   TouchableOpacity,
-  Animated,
 } from "react-native";
 import {
   Searchbar,
@@ -22,6 +20,7 @@ import SelectDropdown from "react-native-select-dropdown";
 import WaskatDetailsComponent from "../WaskatDetailsComponent/WaskatDetailsComponent";
 import useStore from "../../store";
 import db from "../../Database";
+import { FlashList } from "@shopify/flash-list";
 
 const Home = () => {
   const {
@@ -42,8 +41,6 @@ const Home = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const flatListRef = useRef(null);
-  const [lastScrollOffset, setLastScrollOffset] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchData(selectedOption, searchQuery, loadedRecords);
@@ -109,38 +106,6 @@ const Home = () => {
     fetchTotalRecords(englishTableName);
   };
 
-  const handleScroll = (event) => {
-    const currentScrollOffset = event.nativeEvent.contentOffset.y;
-
-    if (currentScrollOffset > lastScrollOffset && currentScrollOffset > 500) {
-      hideGoToTopButton();
-    } else if (
-      currentScrollOffset < lastScrollOffset &&
-      currentScrollOffset > 500
-    ) {
-      showGoToTopButton();
-    } else if (currentScrollOffset <= 500) {
-      hideGoToTopButton();
-    }
-
-    setLastScrollOffset(currentScrollOffset);
-  };
-
-  const showGoToTopButton = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 100,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const hideGoToTopButton = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 100,
-      useNativeDriver: true,
-    }).start();
-  };
   const ListItem = React.memo(({ item, onPressDetails, onPressDelete }) => {
     return (
       <Card
@@ -225,7 +190,7 @@ const Home = () => {
         />
       </View>
 
-      <FlatList
+      <FlashList
         ref={flatListRef}
         data={data}
         renderItem={renderItem}
@@ -235,13 +200,13 @@ const Home = () => {
         }
         ListHeaderComponent={renderListHeader}
         initialNumToRender={5}
-        onScroll={handleScroll} // Track scroll position
+        estimatedItemSize={139}
       />
-      <Animated.View style={[styles.goToTopButton, { opacity: fadeAnim }]}>
+      <View style={styles.goToTopButton}>
         <TouchableOpacity onPress={goToTop}>
           <IconButton icon="arrow-up" color="#0083D0" />
         </TouchableOpacity>
-      </Animated.View>
+      </View>
 
       {modalVisible && selectedOption === "customer" && (
         <CustomerDetailsModal
@@ -269,6 +234,7 @@ const Home = () => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

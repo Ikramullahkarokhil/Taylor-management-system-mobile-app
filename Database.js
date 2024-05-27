@@ -1,6 +1,6 @@
 import * as SQLite from "expo-sqlite";
 
-const databaseName = "adilFashionData3";
+const databaseName = "adilFashionData5";
 
 const db = SQLite.openDatabase(databaseName);
 
@@ -20,6 +20,7 @@ export const initializeDatabase = async () => {
         pacha REAL,
         yakhan TEXT,
         yakhanValue REAL,
+        yakhanBin INTEGER,
         farmaish TEXT,
         daman TEXT,
         caff TEXT,

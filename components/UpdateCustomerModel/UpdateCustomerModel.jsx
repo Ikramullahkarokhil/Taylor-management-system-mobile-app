@@ -10,6 +10,7 @@ import { Button, Checkbox, TextInput } from "react-native-paper";
 import SelectDropdown from "react-native-select-dropdown";
 import { Formik } from "formik";
 import db from "../../Database";
+import * as NavigationBar from "expo-navigation-bar";
 
 const DynamicSelectField = ({
   name,
@@ -83,11 +84,14 @@ const DynamicInputField = ({
 
 const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
   const [jeebTunban, setJeebTunban] = useState(false);
+  const [yakhanBin, setYakhanBin] = useState(false);
   const customerId = customerData.id;
+  NavigationBar.setBackgroundColorAsync("#F2F5F3");
 
   useEffect(() => {
     if (customerData) {
       setJeebTunban(customerData.jeebTunban === 1);
+      setYakhanBin(customerData.yakhanBin === 1);
     }
   }, [customerData]);
 
@@ -110,6 +114,7 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
     jeeb: customerData?.jeeb || "",
     tunbanStyle: customerData?.tunbanStyle || "",
     jeebTunban,
+    yakhanBin,
   };
 
   const getCurrentDate = () => {
@@ -156,6 +161,7 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
 
   const saveCustomer = (values, resetForm) => {
     const newJeebTunban = jeebTunban ? 1 : 0;
+    const newYakhanBin = yakhanBin ? 1 : 0;
     const currentDate = getCurrentDate();
 
     const {
@@ -195,6 +201,7 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
             pacha = ?,
             yakhan = ?,
             yakhanValue = ?,
+            yakhanBin = ?,
             farmaish = ?,
             daman = ?,
             caff = ?,
@@ -217,6 +224,7 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
             pacha,
             yakhan,
             yakhanValue,
+            newYakhanBin,
             farmaish,
             daman,
             caff,
@@ -345,14 +353,16 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
                 </View>
 
                 <View style={styles.fieldContainer}>
-                  <DynamicSelectField
-                    label={values.daman}
-                    name="daman"
-                    handleChange={handleChange}
-                    handleBlur={handleBlur}
-                    value={values.daman}
-                    items={selectDaman}
-                    errors={errors}
+                  <Checkbox.Item
+                    label="بن دار"
+                    status={yakhanBin ? "checked" : "unchecked"}
+                    onPress={() => {
+                      setYakhanBin(!yakhanBin);
+                    }}
+                    labelStyle={styles.checkboxLabel}
+                    color="#0083D0"
+                    uncheckedColor="#0083D0"
+                    style={styles.checkbox}
                   />
                 </View>
               </View>
@@ -459,12 +469,13 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
 
               <View style={styles.fieldContainer2}>
                 <View style={styles.fieldContainer}>
-                  <DynamicInputField
-                    label="فرمایشات"
-                    name="farmaish"
+                  <DynamicSelectField
+                    label={values.daman}
+                    name="daman"
                     handleChange={handleChange}
                     handleBlur={handleBlur}
-                    value={values.farmaish}
+                    value={values.daman}
+                    items={selectDaman}
                     errors={errors}
                   />
                 </View>
@@ -479,6 +490,18 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
                     color="#0083D0"
                     uncheckedColor="#0083D0"
                     style={styles.checkbox}
+                  />
+                </View>
+              </View>
+              <View style={[styles.fieldContainer2, { marginTop: 10 }]}>
+                <View style={styles.fieldContainer}>
+                  <DynamicInputField
+                    label="فرمایشات"
+                    name="farmaish"
+                    handleChange={handleChange}
+                    handleBlur={handleBlur}
+                    value={values.farmaish}
+                    errors={errors}
                   />
                 </View>
               </View>

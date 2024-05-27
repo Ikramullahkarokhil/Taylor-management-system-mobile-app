@@ -30,7 +30,8 @@
     "react-native-select-dropdown": "^3.4.0",
     "react-native-tab-view": "^3.5.2",
     "yup": "^1.4.0",
-    "zustand": "^4.5.2"
+    "zustand": "^4.5.2",
+    "@shopify/flash-list": "1.6.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
