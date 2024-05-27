@@ -1,6 +1,6 @@
 import * as SQLite from "expo-sqlite";
 
-const databaseName = "adilFashionData5";
+const databaseName = "adilFashionData";
 
 const db = SQLite.openDatabase(databaseName);
 
