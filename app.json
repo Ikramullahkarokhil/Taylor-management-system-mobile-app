@@ -1,7 +1,6 @@
 {
   "expo": {
     "name": "AdilFashion",
-
     "slug": "AdilFashion",
     "version": "2.1.0",
     "orientation": "default",
@@ -32,6 +31,6 @@
         "projectId": "2fe37cef-bc6e-4c02-8dda-49475fdced3e"
       }
     },
-    "scheme": "adilFashion"
+    "scheme": ["adilfashion"]
   }
 }
