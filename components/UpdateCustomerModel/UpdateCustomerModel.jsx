@@ -5,11 +5,13 @@ import {
   View,
   Modal,
   ToastAndroid,
+  Text,
 } from "react-native";
 import { Button, Checkbox, TextInput } from "react-native-paper";
 import SelectDropdown from "react-native-select-dropdown";
 import { Formik } from "formik";
-import db from "../../Database";
+import { doc, updateDoc } from "firebase/firestore"; // Import Firestore functions
+import dbFirestore from "../../firebase";
 import * as NavigationBar from "expo-navigation-bar";
 
 const DynamicSelectField = ({
@@ -159,7 +161,8 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
   const selectJeeb = ["2 جیب بغل 1 پیشرو", "2 جیب بغل"];
   const selectTunbanStyle = ["تنبان آزاد", "تنبان متوسط", "تنبان بلوچی"];
 
-  const saveCustomer = (values, resetForm) => {
+  const saveCustomer = async (values, resetForm) => {
+    onClose();
     const newJeebTunban = jeebTunban ? 1 : 0;
     const newYakhanBin = yakhanBin ? 1 : 0;
     const currentDate = getCurrentDate();
@@ -184,77 +187,39 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
       tunbanStyle,
     } = values;
 
-    db.transaction(
-      (tx) => {
-        tx.executeSql(
-          `
-          UPDATE customer
-          SET 
-            name = ?,
-            phoneNumber = ?,
-            qad = ?,
-            barDaman = ?,
-            baghal = ?,
-            shana = ?,
-            astin = ?,
-            tunban = ?,
-            pacha = ?,
-            yakhan = ?,
-            yakhanValue = ?,
-            yakhanBin = ?,
-            farmaish = ?,
-            daman = ?,
-            caff = ?,
-            caffValue = ?,
-            jeeb = ?,
-            tunbanStyle = ?,
-            jeebTunban = ?,
-            regestrationDate = ?
-          WHERE id = ?
-          `,
-          [
-            name,
-            phoneNumber,
-            qad,
-            barDaman,
-            baghal,
-            shana,
-            astin,
-            tunban,
-            pacha,
-            yakhan,
-            yakhanValue,
-            newYakhanBin,
-            farmaish,
-            daman,
-            caff,
-            caffValue,
-            jeeb,
-            tunbanStyle,
-            newJeebTunban,
-            currentDate,
-            customerId,
-          ],
-          (_, result) => {
-            console.log("Customer updated successfully:");
-            ToastAndroid.show(
-              "مشتری موفقانه به روز رسانی شد!",
-              ToastAndroid.SHORT
-            );
-            resetForm();
-            onClose();
-          },
-          (_, error) => {
-            console.log("Error updating customer:", error);
-            // Handle error here
-          }
-        );
-      },
-      (error) => {
-        console.log("Transaction error:", error);
-        // Handle transaction error here
-      }
-    );
+    try {
+      // Update the customer data in Firestore
+      const customerRef = doc(dbFirestore, "customer", customerId); // Make sure "customers" is your collection name
+      await updateDoc(customerRef, {
+        name,
+        phoneNumber,
+        qad,
+        barDaman,
+        baghal,
+        shana,
+        astin,
+        tunban,
+        pacha,
+        yakhan,
+        yakhanValue,
+        yakhanBin: newYakhanBin,
+        farmaish,
+        daman,
+        caff,
+        caffValue,
+        jeeb,
+        tunbanStyle,
+        jeebTunban: newJeebTunban,
+        regestrationDate: currentDate,
+      });
+
+      console.log("Customer updated successfully:");
+      ToastAndroid.show("مشتری موفقانه به روز رسانی شد!", ToastAndroid.SHORT);
+      resetForm();
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      ToastAndroid.show("Error updating customer.", ToastAndroid.SHORT);
+    }
   };
 
   return (

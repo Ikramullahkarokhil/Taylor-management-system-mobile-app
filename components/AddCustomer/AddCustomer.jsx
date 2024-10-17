@@ -6,12 +6,14 @@ import {
   Text,
   ToastAndroid,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { TextInput, Checkbox } from "react-native-paper";
 
 import SelectDropdown from "react-native-select-dropdown";
 import { Formik } from "formik";
-import db from "../../Database";
+import dbFirestore from "../../firebase";
+import { addDoc, collection } from "firebase/firestore";
 import * as Yup from "yup";
 
 const validationSchema = Yup.object().shape({
@@ -92,6 +94,7 @@ const AddCustomer = () => {
   const [resetFields, setResetFields] = useState(false);
   const [jeebTunbanChecked, setJeebTunbanChecked] = useState(false);
   const [yakhanBinChecked, setYakhanBinChecked] = useState(false);
+  const [loading, setLoading] = useState(false);
   const getCurrentDate = () => {
     const currentDate = new Date();
     const year = currentDate.getFullYear();
@@ -135,53 +138,51 @@ const AddCustomer = () => {
   const selectJeeb = ["2 جیب بغل 1 پیشرو", "2 جیب بغل"];
   const selectTunbanStyle = ["تنبان آزاد", "تنبان متوسط", "تنبان بلوچی"];
 
-  const saveCustomer = (values, resetForm) => {
-    db.transaction(
-      (tx) => {
-        tx.executeSql(
-          "INSERT INTO customer (name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue,yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?,?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          [
-            values.name,
-            values.phoneNumber,
-            values.qad,
-            values.barDaman,
-            values.baghal,
-            values.shana,
-            values.astin,
-            values.tunban,
-            values.pacha,
-            values.yakhan,
-            values.yakhanValue,
-            yakhanBinChecked ? 1 : 0,
-            values.farmaish,
-            values.daman,
-            values.caff,
-            values.caffValue,
-            values.jeeb,
-            values.tunbanStyle,
-            jeebTunbanChecked ? 1 : 0,
-            currentDate,
-          ],
-          (_, resultSet) => {
-            if (resultSet.rowsAffected > 0) {
-              ToastAndroid.show("مشتری موفقانه اضافه شد!", ToastAndroid.SHORT);
-              resetForm();
-              setResetFields(!resetFields);
-              setJeebTunbanChecked(false);
-              setYakhanBinChecked(false);
-            } else {
-              console.log("Error saving customer.");
-            }
-          },
-          (_, error) => {
-            console.error("Error inserting customer:", error);
-          }
-        );
-      },
-      (error) => {
-        console.error("Transaction error:", error);
-      }
-    );
+  const saveCustomer = async (
+    values,
+    resetForm,
+    yakhanBinChecked,
+    jeebTunbanChecked
+  ) => {
+    setLoading(true);
+    try {
+      const customersCollection = collection(dbFirestore, "customer");
+      await addDoc(customersCollection, {
+        name: values.name,
+        phoneNumber: values.phoneNumber,
+        qad: values.qad,
+        barDaman: values.barDaman,
+        baghal: values.baghal,
+        shana: values.shana,
+        astin: values.astin,
+        tunban: values.tunban,
+        pacha: values.pacha,
+        yakhan: values.yakhan,
+        yakhanValue: values.yakhanValue,
+        yakhanBin: yakhanBinChecked ? true : false,
+        farmaish: values.farmaish,
+        daman: values.daman,
+        caff: values.caff,
+        caffValue: values.caffValue,
+        jeeb: values.jeeb,
+        tunbanStyle: values.tunbanStyle,
+        jeebTunban: jeebTunbanChecked ? true : false,
+        regestrationDate: currentDate,
+      });
+
+      ToastAndroid.show("مشتری موفقانه اضافه شد!", ToastAndroid.SHORT);
+      resetForm();
+      setResetFields(!resetFields);
+      setJeebTunbanChecked(false);
+      setYakhanBinChecked(false);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error adding customer:", error);
+      ToastAndroid.show(
+        "Failed to add customer. Please try again.",
+        ToastAndroid.SHORT
+      );
+    }
   };
 
   return (
@@ -458,7 +459,11 @@ const AddCustomer = () => {
             <View style={styles.fieldContainer2}>
               <View style={styles.fieldContainer}>
                 <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                  <Text style={styles.buttonText}>اضافه کردن مشتری</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#ffffff" size={24} />
+                  ) : (
+                    <Text style={styles.buttonText}>اضافه کردن مشتری</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>

@@ -11,6 +11,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomNavigation } from "react-native-paper";
 import * as NavigationBar from "expo-navigation-bar";
+import * as Network from "expo-network";
+import { disableNetwork, enableNetwork } from "firebase/firestore";
+import dbFirestore from "./firebase";
 
 const SESSION_TIMEOUT = 15 * 24 * 60 * 60 * 1000;
 
@@ -19,6 +22,24 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
   NavigationBar.setBackgroundColorAsync("#F2F5F3");
+
+  const manageNetwork = async () => {
+    const { isConnected } = await Network.getNetworkStateAsync();
+
+    if (isConnected) {
+      await enableNetwork(dbFirestore);
+      console.log("firestore enabled");
+    } else {
+      await disableNetwork(dbFirestore);
+      console.log("firestore disabled");
+    }
+  };
+
+  useEffect(() => {
+    manageNetwork();
+    // const subscription = Network.addNetworkStateListener(manageNetwork);
+    // return () => subscription.remove();
+  }, []);
 
   const [routes] = useState([
     {

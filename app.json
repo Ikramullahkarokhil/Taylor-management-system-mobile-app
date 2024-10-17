@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#F2F5F3"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -20,17 +22,22 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#F2F5F3"
       },
-      "permissions": ["READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"],
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "package": "com.ikramullah.AdilFashion"
     },
     "web": {
       "favicon": "./assets/icon.png"
     },
+    "scheme": [
+      "adilfashion"
+    ],
     "extra": {
       "eas": {
-        "projectId": "2fe37cef-bc6e-4c02-8dda-49475fdced3e"
+        "projectId": "b44bccd2-4bd4-48c4-9af7-f968aeeef838"
       }
-    },
-    "scheme": ["adilfashion"]
+    }
   }
 }

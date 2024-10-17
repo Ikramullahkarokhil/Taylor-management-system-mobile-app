@@ -18,24 +18,22 @@ import CustomerDetailsModal from "../CustomerDetailsModal/CustomerDetailsModal";
 import ConfirmationDialog from "../ConfirmationDialog/ConfirmationDialog";
 import SelectDropdown from "react-native-select-dropdown";
 import WaskatDetailsComponent from "../WaskatDetailsComponent/WaskatDetailsComponent";
-import useStore from "../../store";
-import db from "../../Database";
+import dbFirestore from "../../firebase"; // Import your Firestore instance
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
 import { FlashList } from "@shopify/flash-list";
 
 const Home = () => {
-  const {
-    searchQuery,
-    data,
-    selectedOption,
-    totalRecords,
-    loadedRecords,
-    setSearchQuery,
-    setSelectedOption,
-    setLoadedRecords,
-    fetchData,
-    fetchTotalRecords,
-  } = useStore();
-
+  const [searchQuery, setSearchQuery] = useState("");
+  const [data, setData] = useState([]);
+  const [selectedOption, setSelectedOption] = useState("customer");
+  const [totalRecords, setTotalRecords] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -43,21 +41,53 @@ const Home = () => {
   const flatListRef = useRef(null);
 
   useEffect(() => {
-    fetchData(selectedOption, searchQuery, loadedRecords);
+    fetchData(selectedOption, searchQuery);
     fetchTotalRecords(selectedOption);
   }, [searchQuery, selectedOption]);
 
-  const goToTop = () => {
-    flatListRef.current.scrollToOffset({ animated: true, offset: 0 });
-    setLoadedRecords(10);
+  const fetchData = async (option, queryText) => {
+    const customersCollection = collection(dbFirestore, option);
+    try {
+      let q;
+      if (queryText) {
+        q = query(
+          customersCollection,
+          where("name", ">=", queryText),
+          where("name", "<=", queryText + "\uf8ff")
+        );
+      } else {
+        q = query(customersCollection); // Fetch all if no search query
+      }
+
+      const querySnapshot = await getDocs(q);
+      const fetchedData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setData(fetchedData);
+    } catch (error) {
+      console.error("Error fetching data from Firestore:", error);
+    }
+  };
+
+  const fetchTotalRecords = async (option) => {
+    const totalCollection = collection(dbFirestore, option);
+    try {
+      const q = query(totalCollection);
+      const querySnapshot = await getDocs(q);
+      setTotalRecords(querySnapshot.size);
+    } catch (error) {
+      console.error("Error fetching total records:", error);
+    }
   };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData(selectedOption, searchQuery, loadedRecords);
+    fetchData(selectedOption, searchQuery);
     fetchTotalRecords(selectedOption);
     setRefreshing(false);
-  }, [selectedOption, searchQuery, loadedRecords]);
+  }, [selectedOption, searchQuery]);
 
   const handleDetails = (item) => {
     setSelectedCustomer(item);
@@ -69,30 +99,26 @@ const Home = () => {
     setConfirmationVisible(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!selectedCustomer) return;
 
     const { id } = selectedCustomer;
 
-    db.transaction((tx) => {
-      tx.executeSql(
-        `DELETE FROM ${selectedOption} WHERE id = ?`,
-        [id],
-        () => {
-          ToastAndroid.show(
-            "Customer deleted successfully!",
-            ToastAndroid.SHORT
-          );
-          setModalVisible(false);
-          setConfirmationVisible(false);
-          fetchTotalRecords(selectedOption);
-          fetchData(selectedOption, searchQuery, loadedRecords);
-        },
-        (error) => {
-          console.log("Error deleting customer:", error);
-        }
-      );
-    });
+    // Remove the item from the UI first
+    setData((prevData) => prevData.filter((item) => item.id !== id));
+
+    try {
+      setConfirmationVisible(false);
+      await deleteDoc(doc(dbFirestore, selectedOption, id)); // Delete from Firestore
+      ToastAndroid.show("Customer deleted successfully!", ToastAndroid.SHORT);
+      // Close the confirmation dialog
+      fetchTotalRecords(selectedOption); // Update the total records
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      // If there's an error, you might want to revert the UI change or show a message
+      // Optionally, you can fetch the data again to ensure UI consistency
+      fetchData(selectedOption, searchQuery);
+    }
   };
 
   const optionMapping = {
@@ -104,6 +130,7 @@ const Home = () => {
     const englishTableName = optionMapping[option];
     setSelectedOption(englishTableName);
     fetchTotalRecords(englishTableName);
+    fetchData(englishTableName, searchQuery); // Fetch data for the new selection
   };
 
   const ListItem = React.memo(({ item, onPressDetails, onPressDelete }) => {
@@ -154,17 +181,21 @@ const Home = () => {
         onPressDelete={handleDelete}
       />
     ),
-    [fetchData]
+    []
   );
 
   const renderListHeader = useCallback(
     () => (
       <View style={styles.totalRecords}>
-        <Text>Total Number of records {totalRecords}</Text>
+        <Text>Total Number of records: {totalRecords}</Text>
       </View>
     ),
     [totalRecords]
   );
+
+  const goToTop = () => {
+    flatListRef.current.scrollToOffset({ animated: true, offset: 0 });
+  };
 
   return (
     <View style={styles.container}>

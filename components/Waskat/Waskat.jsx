@@ -8,11 +8,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { TextInput } from "react-native-paper";
-
 import SelectDropdown from "react-native-select-dropdown";
 import { Formik } from "formik";
-import db from "../../Database";
 import * as Yup from "yup";
+import { dbFirestore } from "../../firebase";
+import { addDoc, collection } from "firebase/firestore";
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().required(),
@@ -90,6 +90,7 @@ const DynamicInputField = ({
 
 const Waskat = () => {
   const [resetFields, setResetFields] = useState(false);
+
   const getCurrentDate = () => {
     const currentDate = new Date();
     const year = currentDate.getFullYear();
@@ -101,46 +102,32 @@ const Waskat = () => {
 
     return `${year}-${month}-${day}`;
   };
-  const currentDate = getCurrentDate();
 
+  const currentDate = getCurrentDate();
   const selectYakhan = ["وی v", "ګول", "یخندار"];
 
-  const saveCustomerWaskat = (values, resetForm) => {
-    db.transaction(
-      (tx) => {
-        tx.executeSql(
-          "INSERT INTO waskat (name, phoneNumber, qad, yakhan, yakhanValue,shana, baghal,kamar, soreen,astin, regestrationDate) VALUES (?,?,?, ?, ?, ?, ?, ?, ?,?,?)",
-          [
-            values.name,
-            values.phoneNumber,
-            values.qad,
-            values.yakhan,
-            values.yakhanValue,
-            values.shana,
-            values.baghal,
-            values.kamar,
-            values.soreen,
-            values.astin,
-            currentDate,
-          ],
-          (_, resultSet) => {
-            if (resultSet.rowsAffected > 0) {
-              ToastAndroid.show("مشتری موفقانه اضافه شد!", ToastAndroid.SHORT);
-              resetForm();
-              setResetFields(!resetFields);
-            } else {
-              console.log("Error saving customer.");
-            }
-          },
-          (_, error) => {
-            console.error("Error inserting customer:", error);
-          }
-        );
-      },
-      (error) => {
-        console.error("Transaction error:", error);
-      }
-    );
+  const saveCustomerWaskat = async (values, resetForm) => {
+    try {
+      const waskatCollection = collection(dbFirestore, "waskat");
+      await addDoc(waskatCollection, {
+        name: values.name,
+        phoneNumber: values.phoneNumber,
+        qad: values.qad,
+        yakhan: values.yakhan,
+        yakhanValue: values.yakhanValue,
+        shana: values.shana,
+        baghal: values.baghal,
+        kamar: values.kamar,
+        soreen: values.soreen,
+        astin: values.astin,
+        registrationDate: currentDate,
+      });
+      ToastAndroid.show("مشتری موفقانه اضافه شد!", ToastAndroid.SHORT);
+      resetForm();
+      setResetFields(!resetFields);
+    } catch (error) {
+      console.error("Error saving customer:", error);
+    }
   };
 
   return (
@@ -343,44 +330,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderTopLeftRadius: 5,
     borderTopRightRadius: 5,
-    paddingVertical: 10,
-    paddingHorizontal: 1,
     borderColor: "black",
-    width: "auto",
-    height: 55,
     backgroundColor: "white",
   },
   dropdownButtonText: {
-    color: "#333",
     textAlign: "left",
+    color: "black",
   },
   dropdown: {
-    borderWidth: 1,
+    backgroundColor: "white",
     borderRadius: 5,
-    borderColor: "#ccc",
-    marginTop: 5,
   },
   dropdownItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+    color: "black",
   },
   dropdownItemText: {
-    color: "#333",
+    textAlign: "left",
+    color: "black",
   },
-
   button: {
-    backgroundColor: "#0083D0",
+    backgroundColor: "red",
+    marginVertical: 20,
+    paddingVertical: 10,
     borderRadius: 5,
-    paddingVertical: 15,
-    paddingHorizontal: 50,
-    alignItems: "center",
-    marginTop: 10,
   },
   buttonText: {
     color: "white",
-    fontSize: 16,
+    textAlign: "center",
     fontWeight: "bold",
   },
 });

@@ -1,6 +1,6 @@
 import * as SQLite from "expo-sqlite/legacy";
 
-const databaseName = "adilFashionData";
+const databaseName = "adilFashionData2";
 
 const db = SQLite.openDatabase(databaseName);
 
@@ -28,7 +28,8 @@ export const initializeDatabase = async () => {
         jeeb TEXT,
         tunbanStyle TEXT,
         jeebTunban INTEGER,
-        regestrationDate DATE
+        regestrationDate DATE,
+        sync_status TEXT DEFAULT 'pending'
       );`
     );
     console.log("customer table created");
@@ -53,7 +54,8 @@ db.transaction((tx) => {
       soreen REAL,
       astin REAL,
       yakhanValue REAL,
-      regestrationDate DATE
+      regestrationDate DATE,
+      sync_status TEXT DEFAULT 'pending'
     );`
   );
   console.log("Waskat table created");
