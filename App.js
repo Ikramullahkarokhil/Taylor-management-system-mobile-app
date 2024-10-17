@@ -14,6 +14,7 @@ import * as NavigationBar from "expo-navigation-bar";
 import * as Network from "expo-network";
 import { disableNetwork, enableNetwork } from "firebase/firestore";
 import dbFirestore from "./firebase";
+import * as Net from "@react-native-community/netinfo";
 
 const SESSION_TIMEOUT = 15 * 24 * 60 * 60 * 1000;
 
@@ -37,7 +38,7 @@ export default function App() {
 
   useEffect(() => {
     manageNetwork();
-    // const subscription = Network.addNetworkStateListener(manageNetwork);
+    // const subscription = Net.addEventListener(manageNetwork);
     // return () => subscription.remove();
   }, []);
 
