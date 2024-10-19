@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,12 +6,13 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import * as LocalAuthentication from "expo-local-authentication";
 import { Formik } from "formik";
 import { StatusBar } from "expo-status-bar";
 import * as yup from "yup";
-import { executeSql } from "../../Database";
 import { TextInput } from "react-native-paper";
 import * as NavigationBar from "expo-navigation-bar";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 
 const LoginSchema = yup.object().shape({
   password: yup.string().required("Password is required"),
@@ -20,21 +21,51 @@ const LoginSchema = yup.object().shape({
 const LoginPage = ({ onLogin }) => {
   const [isPasswordIncorrect, setIsPasswordIncorrect] = useState(false);
   const [loading, setLoading] = useState(false);
+  const defaultPassword = "3737"; // Set your default password here
+
   NavigationBar.setBackgroundColorAsync("#F2F5F3");
+
+  useEffect(() => {
+    const initializePassword = async () => {
+      // await AsyncStorage.removeItem("adminPassword");
+      const storedPassword = await AsyncStorage.getItem("adminPassword");
+      if (!storedPassword) {
+        await storePassword(defaultPassword); // Store the default password
+      }
+    };
+    initializePassword();
+    authenticate();
+  }, []);
+
+  const authenticate = async () => {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      if (!hasHardware) return;
+
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!isEnrolled) return;
+
+      const result = await LocalAuthentication.authenticateAsync();
+      if (result.success) {
+        onLogin(true);
+      }
+    } catch (error) {
+      console.error("Authentication error:", error);
+    }
+  };
 
   const handleLogin = async (values) => {
     try {
       setLoading(true);
       const inputPassword = values.password;
 
-      const admin = await executeSql("SELECT * FROM admin WHERE id = 1;");
+      // Fetch the stored password from AsyncStorage
+      const storedPassword = await AsyncStorage.getItem("adminPassword");
 
-      if (!admin || !admin.rows.length) {
+      if (!storedPassword) {
         setIsPasswordIncorrect(true);
         return;
       }
-
-      const storedPassword = admin.rows.item(0).password;
 
       if (inputPassword === storedPassword) {
         onLogin(true);
@@ -46,6 +77,15 @@ const LoginPage = ({ onLogin }) => {
       alert("An error occurred during login. Please try again later.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const storePassword = async (password) => {
+    try {
+      await AsyncStorage.setItem("adminPassword", password);
+      console.log("Password stored successfully.");
+    } catch (error) {
+      console.error("Error storing password:", error);
     }
   };
 
@@ -76,13 +116,13 @@ const LoginPage = ({ onLogin }) => {
                     : null,
                   isPasswordIncorrect ? styles.inputError : null,
                 ]}
-                onChangeText={(text) => {
-                  handleChange("password")(text);
-                }}
+                onChangeText={handleChange("password")}
                 onBlur={handleBlur("password")}
                 value={values.password}
                 placeholder="Password"
                 secureTextEntry
+                keyboardType="numeric"
+                maxLength={6}
                 error={
                   isPasswordIncorrect
                     ? "Password is incorrect!"

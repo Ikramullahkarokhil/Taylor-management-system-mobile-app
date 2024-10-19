@@ -1,54 +1,28 @@
 import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View, Text, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import { initializeDatabase } from "./Database";
 import LoginPage from "./components/LoginScreen/LoginPage";
-import { Ionicons } from "@expo/vector-icons"; // Import Material Icons from Expo
+import { Ionicons } from "@expo/vector-icons";
 import Home from "./components/Home/Home";
 import Settings from "./components/Settings/Settings";
 import AddPage from "./components/AddPage/AddPage";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomNavigation } from "react-native-paper";
 import * as NavigationBar from "expo-navigation-bar";
-import * as Network from "expo-network";
-import { disableNetwork, enableNetwork } from "firebase/firestore";
-import dbFirestore from "./firebase";
-import * as Net from "@react-native-community/netinfo";
-
-const SESSION_TIMEOUT = 15 * 24 * 60 * 60 * 1000;
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
+
   NavigationBar.setBackgroundColorAsync("#F2F5F3");
 
-  const manageNetwork = async () => {
-    const { isConnected } = await Network.getNetworkStateAsync();
-
-    if (isConnected) {
-      await enableNetwork(dbFirestore);
-      console.log("firestore enabled");
-    } else {
-      await disableNetwork(dbFirestore);
-      console.log("firestore disabled");
-    }
-  };
-
   useEffect(() => {
-    manageNetwork();
-    // const subscription = Net.addEventListener(manageNetwork);
-    // return () => subscription.remove();
+    initializeDatabase();
   }, []);
 
   const [routes] = useState([
-    {
-      key: "home",
-      title: "Home",
-      icon: "home",
-      inactiveIcon: "home-outline",
-    },
+    { key: "home", title: "Home", icon: "home", inactiveIcon: "home-outline" },
     {
       key: "addCustomer",
       title: "Add Customer",
@@ -63,54 +37,9 @@ export default function App() {
     },
   ]);
 
-  useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        const loginTimestamp = await AsyncStorage.getItem("loginTimestamp");
-        if (loginTimestamp) {
-          const lastLoginTime = new Date(parseInt(loginTimestamp));
-          const currentTime = new Date();
-          const sessionExpired = currentTime - lastLoginTime > SESSION_TIMEOUT;
-          if (sessionExpired) {
-            // Session expired, log out user
-            setIsLoggedIn(false);
-            await AsyncStorage.removeItem("loginTimestamp");
-          } else {
-            setIsLoggedIn(true);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking login status:", error);
-      } finally {
-        setLoading(false); // Set loading to false after checking login status
-      }
-    };
-
-    const appOpenHandler = async () => {
-      initializeDatabase();
-      await checkLoginStatus();
-    };
-
-    appOpenHandler();
-  }, []);
-
   const handleLogin = async () => {
     setIsLoggedIn(true);
-    await AsyncStorage.setItem("loginTimestamp", Date.now().toString());
   };
-
-  const handleLogout = async () => {
-    setIsLoggedIn(false);
-    await AsyncStorage.removeItem("loginTimestamp");
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#3498db" />
-      </View>
-    );
-  }
 
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
@@ -124,7 +53,7 @@ export default function App() {
   const renderScene = BottomNavigation.SceneMap({
     home: Home,
     addCustomer: AddPage,
-    settings: () => <Settings onLogout={handleLogout} />,
+    settings: Settings,
   });
 
   return (

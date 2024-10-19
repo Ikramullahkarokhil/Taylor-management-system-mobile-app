@@ -1,6 +1,6 @@
 {
   "name": "adilfashion",
-  "version": "1.0.0",
+  "version": "2.5.0",
   "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -34,7 +34,8 @@
     "yup": "^1.4.0",
     "zustand": "^4.5.2",
     "expo-network": "~6.0.1",
-    "@react-native-community/netinfo": "11.3.1"
+    "@react-native-community/netinfo": "11.3.1",
+    "expo-local-authentication": "~14.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

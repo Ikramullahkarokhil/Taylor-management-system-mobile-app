@@ -17,8 +17,7 @@ import {
 import CustomerDetailsModal from "../CustomerDetailsModal/CustomerDetailsModal";
 import ConfirmationDialog from "../ConfirmationDialog/ConfirmationDialog";
 import SelectDropdown from "react-native-select-dropdown";
-import WaskatDetailsComponent from "../WaskatDetailsComponent/WaskatDetailsComponent";
-import dbFirestore from "../../firebase"; // Import your Firestore instance
+import dbFirestore from "../../firebase";
 import {
   collection,
   query,
@@ -28,6 +27,8 @@ import {
   doc,
 } from "firebase/firestore";
 import { FlashList } from "@shopify/flash-list";
+import NetInfo from "@react-native-community/netinfo";
+import { executeSql, updateCustomersInSQLite } from "../../Database";
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,9 +39,35 @@ const Home = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const flatListRef = useRef(null);
 
   useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected);
+    });
+    NetInfo.fetch().then((state) => {
+      setIsConnected(state.isConnected);
+      return () => {
+        unsubscribe();
+      };
+    });
+  }, []);
+
+  const getdata = async () => {
+    try {
+      const sqlQuery = "SELECT * FROM customers";
+      const results = await executeSql(sqlQuery); // Use executeSql to fetch customers
+      const customers = results.rows._array;
+      setData(customers); // Update state with fetched customers
+      console.log(customers);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+    }
+  };
+
+  useEffect(() => {
+    getdata();
     fetchData(selectedOption, searchQuery);
     fetchTotalRecords(selectedOption);
   }, [searchQuery, selectedOption]);
@@ -48,35 +75,65 @@ const Home = () => {
   const fetchData = async (option, queryText) => {
     const customersCollection = collection(dbFirestore, option);
     try {
-      let q;
-      if (queryText) {
-        q = query(
-          customersCollection,
-          where("name", ">=", queryText),
-          where("name", "<=", queryText + "\uf8ff")
-        );
+      if (isConnected) {
+        let q;
+        if (queryText) {
+          q = query(
+            customersCollection,
+            where("name", ">=", queryText),
+            where("name", "<=", queryText + "\uf8ff")
+          );
+        } else {
+          q = query(customersCollection);
+        }
+
+        const querySnapshot = await getDocs(q);
+        const fetchedData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setData(fetchedData);
+        updateSQLiteWithFetchedData(fetchedData);
       } else {
-        q = query(customersCollection); // Fetch all if no search query
+        console.log("offline");
+        const sqlQuery = "SELECT * FROM customers";
+        const results = await executeSql(sqlQuery); // Use executeSql to fetch customers
+        const sqliteData = results.rows._array;
+        setData(sqliteData); // Update state with fetched SQLite data
       }
-
-      const querySnapshot = await getDocs(q);
-      const fetchedData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      setData(fetchedData);
     } catch (error) {
-      console.error("Error fetching data from Firestore:", error);
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const updateSQLiteWithFetchedData = async (data) => {
+    try {
+      await updateCustomersInSQLite(data);
+      console.log("SQLite updated with Firestore data.");
+    } catch (error) {
+      console.error("Error updating SQLite:", error);
     }
   };
 
   const fetchTotalRecords = async (option) => {
     const totalCollection = collection(dbFirestore, option);
     try {
-      const q = query(totalCollection);
-      const querySnapshot = await getDocs(q);
-      setTotalRecords(querySnapshot.size);
+      if (isConnected) {
+        const q = query(totalCollection);
+        const querySnapshot = await getDocs(q);
+        setTotalRecords(querySnapshot.size);
+      } else {
+        const sqlQuery = "SELECT * FROM customers";
+        const results = await executeSql(sqlQuery); // Use executeSql to count records
+        const cachedData = results.rows._array;
+        if (cachedData) {
+          setTotalRecords(cachedData.length);
+          console.log("Total records calculated from SQLite");
+        } else {
+          console.log("No cached data found in SQLite");
+          setTotalRecords(0);
+        }
+      }
     } catch (error) {
       console.error("Error fetching total records:", error);
     }
@@ -104,19 +161,15 @@ const Home = () => {
 
     const { id } = selectedCustomer;
 
-    // Remove the item from the UI first
     setData((prevData) => prevData.filter((item) => item.id !== id));
 
     try {
       setConfirmationVisible(false);
-      await deleteDoc(doc(dbFirestore, selectedOption, id)); // Delete from Firestore
+      await deleteDoc(doc(dbFirestore, selectedOption, id));
       ToastAndroid.show("Customer deleted successfully!", ToastAndroid.SHORT);
-      // Close the confirmation dialog
-      fetchTotalRecords(selectedOption); // Update the total records
+      fetchTotalRecords(selectedOption);
     } catch (error) {
       console.error("Error deleting customer:", error);
-      // If there's an error, you might want to revert the UI change or show a message
-      // Optionally, you can fetch the data again to ensure UI consistency
       fetchData(selectedOption, searchQuery);
     }
   };
@@ -130,7 +183,7 @@ const Home = () => {
     const englishTableName = optionMapping[option];
     setSelectedOption(englishTableName);
     fetchTotalRecords(englishTableName);
-    fetchData(englishTableName, searchQuery); // Fetch data for the new selection
+    fetchData(englishTableName, searchQuery);
   };
 
   const ListItem = React.memo(({ item, onPressDetails, onPressDelete }) => {
@@ -239,29 +292,22 @@ const Home = () => {
         </TouchableOpacity>
       </View>
 
-      {modalVisible && selectedOption === "customer" && (
+      {modalVisible && (
         <CustomerDetailsModal
           visible={modalVisible}
-          customer={selectedCustomer}
           onClose={() => setModalVisible(false)}
-          onDelete={handleDelete}
+          customer={selectedCustomer}
         />
       )}
-
-      {modalVisible && selectedOption === "waskat" && (
-        <WaskatDetailsComponent
-          visible={modalVisible}
-          customer={selectedCustomer}
-          onClose={() => setModalVisible(false)}
-          onDelete={handleDelete}
+      {confirmationVisible && (
+        <ConfirmationDialog
+          visible={confirmationVisible}
+          onDismiss={() => setConfirmationVisible(false)}
+          onConfirm={confirmDelete}
+          title="Confirm Deletion"
+          message={`Are you sure you want to delete this ${selectedOption}?`}
         />
       )}
-
-      <ConfirmationDialog
-        visible={confirmationVisible}
-        onCancel={() => setConfirmationVisible(false)}
-        onConfirm={confirmDelete}
-      />
     </View>
   );
 };
@@ -327,7 +373,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 5,
   },
-
   totalRecords: {
     marginBottom: 5,
     marginHorizontal: 10,

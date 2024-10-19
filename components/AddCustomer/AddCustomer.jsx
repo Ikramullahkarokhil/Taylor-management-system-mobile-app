@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -9,12 +9,14 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { TextInput, Checkbox } from "react-native-paper";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import SelectDropdown from "react-native-select-dropdown";
 import { Formik } from "formik";
 import dbFirestore from "../../firebase";
 import { addDoc, collection } from "firebase/firestore";
 import * as Yup from "yup";
+import NetInfo from "@react-native-community/netinfo";
+import { insertCustomer } from "../../Database";
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().required(),
@@ -48,7 +50,7 @@ const DynamicSelectField = ({
         dropdownStyle={styles.dropdown}
         dropdownTextStyle={styles.dropdownItem}
         rowTextStyle={styles.dropdownItemText}
-        key={resetField} // Add key prop to trigger re-render when resetField changes
+        key={resetField}
       />
     </View>
   </View>
@@ -95,18 +97,25 @@ const AddCustomer = () => {
   const [jeebTunbanChecked, setJeebTunbanChecked] = useState(false);
   const [yakhanBinChecked, setYakhanBinChecked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const getCurrentDate = () => {
     const currentDate = new Date();
     const year = currentDate.getFullYear();
     let month = currentDate.getMonth() + 1;
     let day = currentDate.getDate();
-
-    // Add leading zeros if month or day is less than 10
     month = month < 10 ? "0" + month : month;
     day = day < 10 ? "0" + day : day;
-
     return `${year}-${month}-${day}`;
   };
+
   const currentDate = getCurrentDate();
 
   const selectYakhan = [
@@ -138,6 +147,30 @@ const AddCustomer = () => {
   const selectJeeb = ["2 جیب بغل 1 پیشرو", "2 جیب بغل"];
   const selectTunbanStyle = ["تنبان آزاد", "تنبان متوسط", "تنبان بلوچی"];
 
+  const syncOfflineData = async () => {
+    const customersInStorage = await AsyncStorage.getItem("customers");
+    const customers = customersInStorage ? JSON.parse(customersInStorage) : [];
+
+    if (customers.length > 0 && isConnected) {
+      try {
+        const customersCollection = collection(dbFirestore, "customer");
+        for (const customer of customers) {
+          await addDoc(customersCollection, customer);
+        }
+        await AsyncStorage.removeItem("customers");
+        ToastAndroid.show("Data synced with Firebase", ToastAndroid.SHORT);
+      } catch (error) {
+        console.error("Error syncing data:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isConnected) {
+      syncOfflineData();
+    }
+  }, [isConnected]);
+
   const saveCustomer = async (
     values,
     resetForm,
@@ -146,8 +179,7 @@ const AddCustomer = () => {
   ) => {
     setLoading(true);
     try {
-      const customersCollection = collection(dbFirestore, "customer");
-      await addDoc(customersCollection, {
+      const customerData = {
         name: values.name,
         phoneNumber: values.phoneNumber,
         qad: values.qad,
@@ -168,14 +200,31 @@ const AddCustomer = () => {
         tunbanStyle: values.tunbanStyle,
         jeebTunban: jeebTunbanChecked ? true : false,
         regestrationDate: currentDate,
-      });
+      };
 
-      ToastAndroid.show("مشتری موفقانه اضافه شد!", ToastAndroid.SHORT);
+      if (isConnected) {
+        const customersCollection = collection(dbFirestore, "customer");
+        await addDoc(customersCollection, customerData);
+        ToastAndroid.show("Customer added to Firebase!", ToastAndroid.SHORT);
+        await insertCustomer(customerData);
+      } else {
+        const customersInStorage = await AsyncStorage.getItem("customers");
+        const customers = customersInStorage
+          ? JSON.parse(customersInStorage)
+          : [];
+        customers.push(customerData);
+        await AsyncStorage.setItem("customers", JSON.stringify(customers));
+        ToastAndroid.show(
+          "No internet. Customer added to local storage.",
+          ToastAndroid.SHORT
+        );
+        await insertCustomer(customerData);
+      }
+
       resetForm();
       setResetFields(!resetFields);
       setJeebTunbanChecked(false);
       setYakhanBinChecked(false);
-      setLoading(false);
     } catch (error) {
       console.error("Error adding customer:", error);
       ToastAndroid.show(
@@ -183,6 +232,7 @@ const AddCustomer = () => {
         ToastAndroid.SHORT
       );
     }
+    setLoading(false);
   };
 
   return (
