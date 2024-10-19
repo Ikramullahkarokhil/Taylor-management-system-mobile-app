@@ -18,7 +18,11 @@ export default function App() {
   NavigationBar.setBackgroundColorAsync("#F2F5F3");
 
   useEffect(() => {
-    initializeDatabase();
+    const initDb = async () => {
+      await initializeDatabase();
+      console.log("Database initialized");
+    };
+    initDb();
   }, []);
 
   const [routes] = useState([

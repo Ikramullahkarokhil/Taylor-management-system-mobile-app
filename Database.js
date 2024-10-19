@@ -1,7 +1,7 @@
 // database.js
 import * as SQLite from "expo-sqlite/legacy";
 
-const db = SQLite.openDatabase("custom");
+const db = SQLite.openDatabase("custome");
 
 export const initializeDatabase = () => {
   db.transaction((tx) => {
@@ -67,38 +67,15 @@ export const insertCustomer = (customerData) => {
   });
 };
 
-export const fetchCustomersFromSQLite = async () => {
-  return new Promise((resolve, reject) => {
-    db.transaction((tx) => {
-      tx.executeSql(
-        "SELECT * FROM customers",
-        [],
-        (_, { rows }) => {
-          const customers = rows._array;
-          resolve(customers);
-        },
-        (_, error) => {
-          console.error("Error fetching customers from SQLite", error);
-          reject(error);
-        }
-      );
-    });
-  });
-};
-
 export const updateCustomersInSQLite = async (customers) => {
   return new Promise((resolve, reject) => {
     db.transaction(
       (tx) => {
-        // Clear existing data in SQLite if necessary
         tx.executeSql("DELETE FROM customers");
-
-        // Insert new data from Firestore
         customers.forEach((customer) => {
           tx.executeSql(
-            "INSERT INTO customers (id, name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue, yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO customers ( name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue, yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-              customer.id,
               customer.name,
               customer.phoneNumber,
               customer.qad,
@@ -139,8 +116,8 @@ export const executeSql = async (sql, params = []) => {
       tx.executeSql(
         sql,
         params,
-        (_, results) => resolve(results),
-        (_, error) => reject(error)
+        (_, results) => resolve(results), // Handle successful result
+        (_, error) => reject(error) // Handle errors
       );
     });
   });

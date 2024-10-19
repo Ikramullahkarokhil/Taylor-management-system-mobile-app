@@ -206,7 +206,6 @@ const AddCustomer = () => {
         const customersCollection = collection(dbFirestore, "customer");
         await addDoc(customersCollection, customerData);
         ToastAndroid.show("Customer added to Firebase!", ToastAndroid.SHORT);
-        await insertCustomer(customerData);
       } else {
         const customersInStorage = await AsyncStorage.getItem("customers");
         const customers = customersInStorage
@@ -218,8 +217,9 @@ const AddCustomer = () => {
           "No internet. Customer added to local storage.",
           ToastAndroid.SHORT
         );
-        await insertCustomer(customerData);
       }
+      await insertCustomer(customerData);
+      console.log("Customer added:", customerData);
 
       resetForm();
       setResetFields(!resetFields);

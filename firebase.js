@@ -1,11 +1,5 @@
 import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  initializeFirestore,
-  CACHE_SIZE_UNLIMITED,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9PROAeSBsycJXwRQK6czmloCjbsTmjJM",
@@ -21,8 +15,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 // const dbFirestore = getFirestore(app);
 
-const dbFirestore = initializeFirestore(app, {
-  cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-});
+const dbFirestore = getFirestore(app);
 
 export default dbFirestore;

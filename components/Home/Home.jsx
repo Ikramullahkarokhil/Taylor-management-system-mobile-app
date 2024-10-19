@@ -29,10 +29,13 @@ import {
 import { FlashList } from "@shopify/flash-list";
 import NetInfo from "@react-native-community/netinfo";
 import { executeSql, updateCustomersInSQLite } from "../../Database";
+import * as Network from "expo-network";
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [data, setData] = useState([]);
+  const [sqliteData, setSqliteData] = useState([]);
+
   const [selectedOption, setSelectedOption] = useState("customer");
   const [totalRecords, setTotalRecords] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -54,20 +57,7 @@ const Home = () => {
     });
   }, []);
 
-  const getdata = async () => {
-    try {
-      const sqlQuery = "SELECT * FROM customers";
-      const results = await executeSql(sqlQuery); // Use executeSql to fetch customers
-      const customers = results.rows._array;
-      setData(customers); // Update state with fetched customers
-      console.log(customers);
-    } catch (error) {
-      console.error("Error fetching customers:", error);
-    }
-  };
-
   useEffect(() => {
-    getdata();
     fetchData(selectedOption, searchQuery);
     fetchTotalRecords(selectedOption);
   }, [searchQuery, selectedOption]);
@@ -92,14 +82,14 @@ const Home = () => {
           id: doc.id,
           ...doc.data(),
         }));
-        setData(fetchedData);
+
         updateSQLiteWithFetchedData(fetchedData);
-      } else {
-        console.log("offline");
+        setData(fetchedData);
+      } else if (!isConnected) {
         const sqlQuery = "SELECT * FROM customers";
-        const results = await executeSql(sqlQuery); // Use executeSql to fetch customers
-        const sqliteData = results.rows._array;
-        setData(sqliteData); // Update state with fetched SQLite data
+        const results = await executeSql(sqlQuery);
+        setSqliteData(results.rows._array);
+        setData(results.rows._array);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -109,7 +99,6 @@ const Home = () => {
   const updateSQLiteWithFetchedData = async (data) => {
     try {
       await updateCustomersInSQLite(data);
-      console.log("SQLite updated with Firestore data.");
     } catch (error) {
       console.error("Error updating SQLite:", error);
     }
@@ -122,14 +111,10 @@ const Home = () => {
         const q = query(totalCollection);
         const querySnapshot = await getDocs(q);
         setTotalRecords(querySnapshot.size);
-      } else {
-        const sqlQuery = "SELECT * FROM customers";
-        const results = await executeSql(sqlQuery); // Use executeSql to count records
-        const cachedData = results.rows._array;
-        if (cachedData) {
-          setTotalRecords(cachedData.length);
-          console.log("Total records calculated from SQLite");
-        } else {
+      } else if (!isConnected) {
+        if (sqliteData) {
+          setTotalRecords(sqliteData.length);
+        } else if (!sqliteData) {
           console.log("No cached data found in SQLite");
           setTotalRecords(0);
         }

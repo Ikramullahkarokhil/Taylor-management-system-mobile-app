@@ -1,95 +1,68 @@
 import { create } from "zustand";
-import { dbFirestore } from "./firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  startAfter,
-  limit,
-} from "firebase/firestore";
+import { executeSql, updateCustomersInSQLite } from "./Database";
+import dbFirestore from "./firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
-const useStore = create((set, get) => ({
-  searchQuery: "",
+const useCustomerStore = create((set) => ({
   data: [],
-  selectedOption: "customer",
+  sqliteData: [],
   totalRecords: 0,
-  loadedRecords: 10,
-  startAfterDoc: null, // For pagination
+  isConnected: true,
 
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  setData: (data) => set({ data }),
-  setSelectedOption: (option) => set({ selectedOption: option }),
-  setTotalRecords: (total) => set({ totalRecords: total }),
-  setLoadedRecords: (records) => set({ loadedRecords: records }),
+  fetchData: async (option, searchQuery, isConnected) => {
+    if (!isConnected) {
+      // Use SQLite data directly if offline
+      const sqlQuery = "SELECT * FROM customers";
+      const results = await executeSql(sqlQuery);
+      console.log("Fetched SQLite data:", results.rows._array); // Debug SQLite data
+      set({ sqliteData: results.rows._array, data: results.rows._array });
+      return;
+    }
 
-  fetchCustomerData: async (searchQuery, startAfterDoc = null) => {
-    const customersCollection = collection(dbFirestore, "customer");
+    const customersCollection = collection(dbFirestore, option);
     try {
-      let customerQuery = query(
-        customersCollection,
-        where("name", "==", searchQuery),
-        limit(10)
-      );
-      if (startAfterDoc) {
-        customerQuery = query(customerQuery, startAfter(startAfterDoc));
+      let q;
+      if (searchQuery) {
+        q = query(
+          customersCollection,
+          where("name", ">=", searchQuery),
+          where("name", "<=", searchQuery + "\uf8ff")
+        );
+      } else {
+        q = query(customersCollection);
       }
-      const snapshot = await getDocs(customerQuery);
-      const customerData = snapshot.docs.map((doc) => ({
+
+      const querySnapshot = await getDocs(q);
+      const fetchedData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      set({ data: [...get().data, ...customerData] }); // Append new data to existing data
-      if (snapshot.docs.length > 0) {
-        set({ startAfterDoc: snapshot.docs[snapshot.docs.length - 1] }); // Store the last document for pagination
-      }
+
+      // Update SQLite with fetched data and set state
+      await updateCustomersInSQLite(fetchedData);
+      set({ data: fetchedData });
     } catch (error) {
-      console.error("Error fetching customer data:", error);
+      console.error("Error fetching data:", error);
     }
   },
 
-  fetchWaskatData: async (searchQuery, startAfterDoc = null) => {
-    const waskatCollection = collection(dbFirestore, "waskat");
+  fetchTotalRecords: async (option, isConnected, sqliteData) => {
+    if (!isConnected) {
+      set({ totalRecords: sqliteData.length || 0 });
+      return;
+    }
+
+    const totalCollection = collection(dbFirestore, option);
     try {
-      let waskatQuery = query(
-        waskatCollection.where("name", "==", searchQuery),
-        limit(10)
-      );
-      if (startAfterDoc) {
-        waskatQuery = query(waskatQuery, startAfter(startAfterDoc));
-      }
-      const snapshot = await getDocs(waskatQuery);
-      const waskatData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      set({ data: [...get().data, ...waskatData] }); // Append new data to existing data
-      if (snapshot.docs.length > 0) {
-        set({ startAfterDoc: snapshot.docs[snapshot.docs.length - 1] }); // Store the last document for pagination
-      }
+      const q = query(totalCollection);
+      const querySnapshot = await getDocs(q);
+      set({ totalRecords: querySnapshot.size });
     } catch (error) {
-      console.error("Error fetching waskat data:", error);
+      console.error("Error fetching total records:", error);
     }
   },
 
-  fetchData: async (selectedOption, searchQuery) => {
-    if (selectedOption === "customer") {
-      await get().fetchCustomerData(searchQuery, get().startAfterDoc);
-    } else if (selectedOption === "waskat") {
-      await get().fetchWaskatData(searchQuery, get().startAfterDoc);
-    }
-  },
-
-  fetchTotalRecords: async (selectedOption) => {
-    const customersCollection = collection(dbFirestore, selectedOption);
-    try {
-      const snapshot = await getDocs(customersCollection);
-      const total = snapshot.size;
-      set({ totalRecords: total });
-    } catch (error) {
-      console.error("Error counting total records:", error);
-    }
-  },
+  setConnectionStatus: (status) => set({ isConnected: status }),
 }));
 
-export default useStore;
+export default useCustomerStore;
