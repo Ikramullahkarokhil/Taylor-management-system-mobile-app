@@ -17,6 +17,7 @@ import {
 import CustomerDetailsModal from "../CustomerDetailsModal/CustomerDetailsModal";
 import ConfirmationDialog from "../ConfirmationDialog/ConfirmationDialog";
 import SelectDropdown from "react-native-select-dropdown";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import dbFirestore from "../../firebase";
 import {
   collection,
@@ -25,17 +26,20 @@ import {
   getDocs,
   deleteDoc,
   doc,
+  writeBatch,
 } from "firebase/firestore";
 import { FlashList } from "@shopify/flash-list";
 import NetInfo from "@react-native-community/netinfo";
 import { executeSql, updateCustomersInSQLite } from "../../Database";
-import * as Network from "expo-network";
+
+const optionMapping = {
+  کالا: "customer",
+  واسکت: "waskat",
+};
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [data, setData] = useState([]);
-  const [sqliteData, setSqliteData] = useState([]);
-
   const [selectedOption, setSelectedOption] = useState("customer");
   const [totalRecords, setTotalRecords] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,89 +50,90 @@ const Home = () => {
   const flatListRef = useRef(null);
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsConnected(state.isConnected);
-    });
-    NetInfo.fetch().then((state) => {
-      setIsConnected(state.isConnected);
-      return () => {
-        unsubscribe();
-      };
-    });
+    // const unsubscribe = NetInfo.addEventListener((state) => {
+    //   setIsConnected(state.isConnected);
+    // });
+    // return () => {
+    //   unsubscribe();
+    // };
   }, []);
 
   useEffect(() => {
-    fetchData(selectedOption, searchQuery);
-    fetchTotalRecords(selectedOption);
+    fetchAllData(selectedOption, searchQuery);
   }, [searchQuery, selectedOption]);
 
-  const fetchData = async (option, queryText) => {
-    const customersCollection = collection(dbFirestore, option);
-    try {
-      if (isConnected) {
-        let q;
-        if (queryText) {
-          q = query(
-            customersCollection,
-            where("name", ">=", queryText),
-            where("name", "<=", queryText + "\uf8ff")
-          );
-        } else {
-          q = query(customersCollection);
-        }
+  // Combined function to fetch both data and total records
+  const fetchAllData = async (option, queryText) => {
+    setRefreshing(true);
+    await fetchData(option, queryText);
+    await fetchTotalRecords();
+    await syncUpdates();
+    setRefreshing(false);
+  };
 
-        const querySnapshot = await getDocs(q);
-        const fetchedData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        updateSQLiteWithFetchedData(fetchedData);
-        setData(fetchedData);
-      } else if (!isConnected) {
+  const fetchData = useCallback(
+    async (option, queryText) => {
+      try {
+        const customersCollection = collection(dbFirestore, option);
         const sqlQuery = "SELECT * FROM customers";
         const results = await executeSql(sqlQuery);
-        setSqliteData(results.rows._array);
         setData(results.rows._array);
+
+        if (isConnected) {
+          const q = queryText
+            ? query(
+                customersCollection,
+                where("name", ">=", queryText),
+                where("name", "<=", queryText + "\uf8ff")
+              )
+            : query(customersCollection);
+
+          const querySnapshot = await getDocs(q);
+          const fetchedData = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          await updateSQLiteWithFetchedData(fetchedData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
       }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
+    },
+    [isConnected]
+  );
 
   const updateSQLiteWithFetchedData = async (data) => {
     try {
       await updateCustomersInSQLite(data);
+      console.log("Customers updated");
     } catch (error) {
       console.error("Error updating SQLite:", error);
     }
   };
 
-  const fetchTotalRecords = async (option) => {
-    const totalCollection = collection(dbFirestore, option);
+  const fetchTotalRecords = async () => {
     try {
-      if (isConnected) {
-        const q = query(totalCollection);
-        const querySnapshot = await getDocs(q);
-        setTotalRecords(querySnapshot.size);
-      } else if (!isConnected) {
-        if (sqliteData) {
-          setTotalRecords(sqliteData.length);
-        } else if (!sqliteData) {
-          console.log("No cached data found in SQLite");
-          setTotalRecords(0);
-        }
+      if (data && data.length > 0) {
+        setTotalRecords(data.length);
+      } else {
+        console.log("No data available");
+        setTotalRecords(0);
       }
     } catch (error) {
       console.error("Error fetching total records:", error);
     }
   };
 
+  useEffect(() => {
+    if (isConnected) {
+      syncDeletions();
+    }
+  }, [isConnected]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData(selectedOption, searchQuery);
-    fetchTotalRecords(selectedOption);
-    setRefreshing(false);
+    fetchAllData(selectedOption, searchQuery);
   }, [selectedOption, searchQuery]);
 
   const handleDetails = (item) => {
@@ -141,34 +146,135 @@ const Home = () => {
     setConfirmationVisible(true);
   };
 
-  const confirmDelete = async () => {
-    if (!selectedCustomer) return;
-
-    const { id } = selectedCustomer;
-
-    setData((prevData) => prevData.filter((item) => item.id !== id));
-
+  const syncDeletions = async () => {
     try {
-      setConfirmationVisible(false);
-      await deleteDoc(doc(dbFirestore, selectedOption, id));
-      ToastAndroid.show("Customer deleted successfully!", ToastAndroid.SHORT);
-      fetchTotalRecords(selectedOption);
+      const deletedCustomer = await AsyncStorage.getItem("deletedCustomer");
+      const customers = deletedCustomer ? JSON.parse(deletedCustomer) : [];
+
+      if (customers.length > 0 && isConnected) {
+        for (const customer of customers) {
+          if (customer.id) {
+            console.log("Syncing deletion:", customer.id);
+            const q = query(
+              collection(dbFirestore, selectedOption),
+              where("id", "==", customer.id)
+            );
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+              querySnapshot.forEach(async (docSnapshot) => {
+                await deleteDoc(
+                  doc(dbFirestore, selectedOption, docSnapshot.id)
+                );
+              });
+            }
+          }
+        }
+        await AsyncStorage.removeItem("deletedCustomer");
+      }
     } catch (error) {
-      console.error("Error deleting customer:", error);
-      fetchData(selectedOption, searchQuery);
+      console.error("Error syncing deletions:", error);
     }
   };
 
-  const optionMapping = {
-    کالا: "customer",
-    واسکت: "waskat",
+  const syncUpdates = async () => {
+    try {
+      const updatedCustomer = await AsyncStorage.getItem("updatedCustomer");
+      const customers = updatedCustomer ? JSON.parse(updatedCustomer) : [];
+
+      if (customers.length > 0 && isConnected) {
+        const batch = writeBatch(dbFirestore); // Firestore batch for multiple updates
+
+        for (const customer of customers) {
+          if (customer.id) {
+            console.log("Syncing updateCustomer:", customer.id);
+
+            const q = query(
+              collection(dbFirestore, selectedOption),
+              where("id", "==", customer.id)
+            );
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+              querySnapshot.forEach((docSnapshot) => {
+                // Pass the data you want to update
+                batch.update(doc(dbFirestore, selectedOption, docSnapshot.id), {
+                  ...customer, // Assuming the customer object has all the updated fields
+                });
+              });
+            }
+          }
+        }
+
+        // Commit the batch of updates
+        await batch.commit();
+        await AsyncStorage.removeItem("updatedCustomer"); // Clear synced customers from AsyncStorage
+      }
+    } catch (error) {
+      console.error("Error syncing updates:", error); // Updated error message
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedCustomer || !selectedCustomer.id) return;
+
+    const { id } = selectedCustomer;
+    setData((prevData) => prevData.filter((item) => item.id !== id));
+
+    try {
+      if (isConnected) {
+        const sqliteQuery = `DELETE FROM customers WHERE id = '${id}'`;
+        await executeSql(sqliteQuery);
+        setConfirmationVisible(false);
+        const q = query(
+          collection(dbFirestore, selectedOption),
+          where("id", "==", id)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          querySnapshot.forEach(async (docSnapshot) => {
+            await deleteDoc(doc(dbFirestore, selectedOption, docSnapshot.id));
+          });
+        }
+        ToastAndroid.show("Customer deleted successfully!", ToastAndroid.SHORT);
+      } else {
+        const customersInStorage = await AsyncStorage.getItem(
+          "deletedCustomer"
+        );
+        const customers = customersInStorage
+          ? JSON.parse(customersInStorage)
+          : [];
+
+        if (!customers.some((customer) => customer.id === id)) {
+          customers.push(selectedCustomer);
+        }
+        await AsyncStorage.setItem(
+          "deletedCustomer",
+          JSON.stringify(customers)
+        );
+
+        const sqlQuery = `DELETE FROM customers WHERE id = '${id}'`;
+        await executeSql(sqlQuery);
+
+        ToastAndroid.show(
+          "No internet. Customer deleted locally.",
+          ToastAndroid.SHORT
+        );
+      }
+      setConfirmationVisible(false);
+      fetchTotalRecords(selectedOption);
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      // Optional: Show user feedback here (e.g., Toast)
+      fetchData(selectedOption, searchQuery);
+    }
   };
 
   const handleOptionChange = (option) => {
     const englishTableName = optionMapping[option];
     setSelectedOption(englishTableName);
-    fetchTotalRecords(englishTableName);
-    fetchData(englishTableName, searchQuery);
+    fetchAllData(englishTableName, searchQuery);
   };
 
   const ListItem = React.memo(({ item, onPressDetails, onPressDelete }) => {
@@ -183,6 +289,7 @@ const Home = () => {
           <View style={styles.cardContent}>
             <Card.Content>
               <Title style={styles.title}>Name: {item.name}</Title>
+
               <Paragraph>
                 Phone: <Text style={styles.content}>{item.phoneNumber}</Text>
               </Paragraph>
@@ -264,6 +371,7 @@ const Home = () => {
         data={data}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
+        key={(item) => item.id}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

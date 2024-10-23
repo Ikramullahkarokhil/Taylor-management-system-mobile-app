@@ -1,13 +1,13 @@
 // database.js
 import * as SQLite from "expo-sqlite/legacy";
 
-const db = SQLite.openDatabase("custome");
+const db = SQLite.openDatabase("customer1");
 
 export const initializeDatabase = () => {
   db.transaction((tx) => {
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT,
         name TEXT NOT NULL,
         phoneNumber TEXT,
         qad TEXT,
@@ -37,8 +37,9 @@ export const insertCustomer = (customerData) => {
   return new Promise((resolve, reject) => {
     db.transaction((tx) => {
       tx.executeSql(
-        `INSERT INTO customers (name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue, yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO customers (id, name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue, yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
+          customerData.id,
           customerData.name,
           customerData.phoneNumber,
           customerData.qad,
@@ -74,8 +75,9 @@ export const updateCustomersInSQLite = async (customers) => {
         tx.executeSql("DELETE FROM customers");
         customers.forEach((customer) => {
           tx.executeSql(
-            "INSERT INTO customers ( name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue, yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO customers (id, name, phoneNumber, qad, barDaman, baghal, shana, astin, tunban, pacha, yakhan, yakhanValue, yakhanBin, farmaish, daman, caff, caffValue, jeeb, tunbanStyle, jeebTunban, regestrationDate) VALUES (?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
+              customer.id,
               customer.name,
               customer.phoneNumber,
               customer.qad,
@@ -99,7 +101,6 @@ export const updateCustomersInSQLite = async (customers) => {
             ]
           );
         });
-
         resolve(true);
       },
       (error) => {

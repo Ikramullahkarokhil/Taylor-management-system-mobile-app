@@ -5,14 +5,22 @@ import {
   View,
   Modal,
   ToastAndroid,
-  Text,
 } from "react-native";
 import { Button, Checkbox, TextInput } from "react-native-paper";
 import SelectDropdown from "react-native-select-dropdown";
 import { Formik } from "formik";
-import { doc, updateDoc } from "firebase/firestore"; // Import Firestore functions
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
 import dbFirestore from "../../firebase";
 import * as NavigationBar from "expo-navigation-bar";
+import NetInfo from "@react-native-community/netinfo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { executeSql } from "../../Database";
 
 const DynamicSelectField = ({
   name,
@@ -87,8 +95,18 @@ const DynamicInputField = ({
 const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
   const [jeebTunban, setJeebTunban] = useState(false);
   const [yakhanBin, setYakhanBin] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const customerId = customerData.id;
   NavigationBar.setBackgroundColorAsync("#F2F5F3");
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (customerData) {
@@ -188,34 +206,123 @@ const UpdateCustomerModel = ({ customerData, onClose, visible }) => {
     } = values;
 
     try {
-      // Update the customer data in Firestore
-      const customerRef = doc(dbFirestore, "customer", customerId); // Make sure "customers" is your collection name
-      await updateDoc(customerRef, {
-        name,
-        phoneNumber,
-        qad,
-        barDaman,
-        baghal,
-        shana,
-        astin,
-        tunban,
-        pacha,
-        yakhan,
-        yakhanValue,
-        yakhanBin: newYakhanBin,
-        farmaish,
-        daman,
-        caff,
-        caffValue,
-        jeeb,
-        tunbanStyle,
-        jeebTunban: newJeebTunban,
-        regestrationDate: currentDate,
-      });
+      if (isConnected) {
+        const q = query(
+          collection(dbFirestore, "customer"),
+          where("id", "==", customerId)
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const docRef = querySnapshot.docs[0].ref;
+          await updateDoc(docRef, {
+            name,
+            phoneNumber,
+            qad,
+            barDaman,
+            baghal,
+            shana,
+            astin,
+            tunban,
+            pacha,
+            yakhan,
+            yakhanValue,
+            yakhanBin: newYakhanBin,
+            farmaish,
+            daman,
+            caff,
+            caffValue,
+            jeeb,
+            tunbanStyle,
+            jeebTunban: newJeebTunban,
+            regestrationDate: currentDate,
+          });
 
-      console.log("Customer updated successfully:");
-      ToastAndroid.show("مشتری موفقانه به روز رسانی شد!", ToastAndroid.SHORT);
-      resetForm();
+          console.log("Customer updated successfully:");
+          ToastAndroid.show(
+            "مشتری موفقانه به روز رسانی شد!",
+            ToastAndroid.SHORT
+          );
+          resetForm();
+        } else {
+          console.log("No customer found with the given ID");
+          ToastAndroid.show("Customer not found.", ToastAndroid.SHORT);
+        }
+      } else {
+        const customersInStorage = await AsyncStorage.getItem(
+          "updatedCustomer"
+        );
+        const customers = customersInStorage
+          ? JSON.parse(customersInStorage)
+          : [];
+
+        if (!customers.some((customer) => customer.id === customerId)) {
+          customers.push({
+            id: customerId,
+            name: values.name,
+            phoneNumber: values.phoneNumber,
+            qad: values.qab,
+            barDaman: values.barDaman,
+            baghal: values.baghal,
+            shana: values.shana,
+            astin: values.astin,
+            tunban: values.tunban,
+            pacha: values.pacha,
+            yakhan: values.yakhan,
+            yakhanValue: values.yakhanValue,
+            yakhanBin: values.yakhanBin,
+            farmaish: values.farmaish,
+            daman: values.daman,
+            caff: values.caff,
+            caffValue: values.caffValue,
+            jeeb: values.jeeb,
+            tunbanStyle: values.tunbanStyle,
+            jeebTunban: values.jeebTunban,
+            regestrationDate: values.regestrationDate,
+          });
+        }
+        await AsyncStorage.setItem(
+          "updatedCustomer",
+          JSON.stringify(customers)
+        );
+
+        const sqlQuery = `
+  UPDATE customers 
+  SET name = ?, phoneNumber = ?, qad = ?, barDaman = ?, baghal = ?, 
+      shana = ?, astin = ?, tunban = ?, pacha = ?, yakhan = ?, 
+      yakhanValue = ?, yakhanBin = ?, farmaish = ?, daman = ?, 
+      caff = ?, caffValue = ?, jeeb = ?, tunbanStyle = ?, 
+      jeebTunban = ?, regestrationDate = ?
+  WHERE id = ?`;
+
+        await executeSql(sqlQuery, [
+          name,
+          phoneNumber,
+          qad,
+          barDaman,
+          baghal,
+          shana,
+          astin,
+          tunban,
+          pacha,
+          yakhan,
+          yakhanValue,
+          newYakhanBin,
+          farmaish,
+          daman,
+          caff,
+          caffValue,
+          jeeb,
+          tunbanStyle,
+          newJeebTunban,
+          currentDate,
+          customerId,
+        ]);
+
+        ToastAndroid.show(
+          "No internet. Customer Updated locally.",
+          ToastAndroid.SHORT
+        );
+      }
     } catch (error) {
       console.error("Error updating customer:", error);
       ToastAndroid.show("Error updating customer.", ToastAndroid.SHORT);

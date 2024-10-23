@@ -89,6 +89,8 @@ const CustomerDetailsModal = ({ visible, customer, onClose }) => {
                 قد اندام : {customer.name}
               </Title>
               <View style={styles.detailsContainer}>
+                <DetailRow label="نام مشتری" value={customer.id} />
+                <Divider />
                 <DetailRow label="نام مشتری" value={customer.name} />
                 <Divider />
                 <DetailRow

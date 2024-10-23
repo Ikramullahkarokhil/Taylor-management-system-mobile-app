@@ -13,10 +13,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import SelectDropdown from "react-native-select-dropdown";
 import { Formik } from "formik";
 import dbFirestore from "../../firebase";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, doc } from "firebase/firestore";
 import * as Yup from "yup";
 import NetInfo from "@react-native-community/netinfo";
 import { insertCustomer } from "../../Database";
+import uuid from "react-native-uuid";
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().required(),
@@ -178,8 +179,12 @@ const AddCustomer = () => {
     jeebTunbanChecked
   ) => {
     setLoading(true);
+
+    const customerId = uuid.v4();
+
     try {
       const customerData = {
+        id: customerId,
         name: values.name,
         phoneNumber: values.phoneNumber,
         qad: values.qad,
@@ -219,8 +224,6 @@ const AddCustomer = () => {
         );
       }
       await insertCustomer(customerData);
-      console.log("Customer added:", customerData);
-
       resetForm();
       setResetFields(!resetFields);
       setJeebTunbanChecked(false);
